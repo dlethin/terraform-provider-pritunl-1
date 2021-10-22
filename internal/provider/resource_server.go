@@ -440,6 +440,21 @@ func resourceServer() *schema.Resource {
 					return nil
 				},
 			},
+			"virtual_network_route": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"cloud_advertise": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default: false,
+						},
+					},
+				},
+			},
 		},
 		CreateContext: resourceCreateServer,
 		ReadContext:   resourceReadServer,
@@ -657,6 +672,38 @@ func resourceCreateServer(ctx context.Context, d *schema.ResourceData, meta inte
 		err = apiClient.AddRoutesToServer(d.Id(), routes)
 		if err != nil {
 			return diag.Errorf("Error on attaching route from the server: %s", err)
+		}
+	}
+
+	if d.HasChange("virtual_network_route") {
+		_, newVirtualNetworkRoutes := d.GetChange("virtual_network_route")
+		virtualNetworkRoutes := make([]pritunl.Route, 0)
+
+		for _, v := range newVirtualNetworkRoutes.([]interface{}) {
+			virtualNetworkRoutes = append(virtualNetworkRoutes, pritunl.ConvertMapToRoute(v.(map[string]interface{})))
+		}
+
+		// get routes
+		routes, err := apiClient.GetRoutesByServer(d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+
+		var my_virtual_route pritunl.Route
+
+		for _, route := range routes {
+			if route.Network == server.Network {
+				my_virtual_route = route
+				break
+			}
+		}
+
+		my_virtual_route.Advertise = virtualNetworkRoutes[0].Advertise
+
+		err = apiClient.UpdateRouteOnServer(d.Id(), my_virtual_route)
+		if err != nil {
+			return diag.Errorf("Error on updating server's virtual network route: %s", err)
 		}
 	}
 
