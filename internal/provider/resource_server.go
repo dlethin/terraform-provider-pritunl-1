@@ -406,7 +406,7 @@ func resourceServer() *schema.Resource {
 						"cloud_advertise": {
 							Type:     schema.TypeBool,
 							Optional: true,
-							Default: false,
+							Default:  false,
 						},
 					},
 				},
@@ -474,9 +474,9 @@ func resourceServer() *schema.Resource {
 						},
 						"cloud_advertise": {
 							Type:     schema.TypeBool,
-							Required:    false,
+							Required: false,
 							Optional: true,
-							Default: false,
+							Default:  false,
 							// Computed:    true,
 						},
 					},
@@ -719,7 +719,6 @@ func resourceCreateServer(ctx context.Context, d *schema.ResourceData, meta inte
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
 
 		var my_virtual_route pritunl.Route
 
