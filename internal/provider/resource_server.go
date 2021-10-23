@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"log"
 	"net"
 	"strings"
 )
@@ -402,6 +403,11 @@ func resourceServer() *schema.Resource {
 							Description: "NAT vpn traffic destined to this network",
 							Computed:    true,
 						},
+						"cloud_advertise": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default: false,
+						},
 					},
 				},
 				Required:    false,
@@ -447,10 +453,31 @@ func resourceServer() *schema.Resource {
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"network": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Network address with subnet to route",
+						},
+						"comment": {
+							Type:        schema.TypeString,
+							Required:    false,
+							Optional:    true,
+							Description: "Comment for route",
+							Computed:    true,
+						},
+						"nat": {
+							Type:        schema.TypeBool,
+							Required:    false,
+							Optional:    true,
+							Description: "NAT vpn traffic destined to this network",
+							Computed:    true,
+						},
 						"cloud_advertise": {
 							Type:     schema.TypeBool,
+							Required:    false,
 							Optional: true,
 							Default: false,
+							Computed:    true,
 						},
 					},
 				},
@@ -565,7 +592,11 @@ func resourceReadServer(ctx context.Context, d *schema.ResourceData, meta interf
 		if !ok {
 			return diag.Errorf("failed to parse routes for the server: %s", server.Name)
 		}
-		d.Set("route", flattenRoutesData(matchRoutesWithSchema(routes, declaredRoutes)))
+		log.Println(fmt.Sprintf("[DEBUG] here1"))
+
+		d.Set("route", flattenRoutesData(matchRoutesWithSchema(routes, declaredRoutes), true))
+		log.Println(fmt.Sprintf("[DEBUG] here2"))
+		d.Set("virtual_network_route", flattenRoutesData(findVirtualNetworkRoutes(routes, server.Network), false))
 	}
 
 	if len(hosts) > 0 {
@@ -1016,12 +1047,13 @@ func resourceDeleteServer(ctx context.Context, d *schema.ResourceData, meta inte
 	return nil
 }
 
-func flattenRoutesData(routesList []pritunl.Route) []interface{} {
+func flattenRoutesData(routesList []pritunl.Route, skipVirtualNetwork bool) []interface{} {
 	routes := make([]interface{}, 0)
 
 	if routesList != nil {
 		for _, route := range routesList {
-			if route.VirtualNetwork {
+			if route.VirtualNetwork && skipVirtualNetwork {
+				log.Println(fmt.Sprintf("[DEBUG] skip %d", skipVirtualNetwork))
 				// skip virtual network route
 				continue
 			}
@@ -1033,12 +1065,28 @@ func flattenRoutesData(routesList []pritunl.Route) []interface{} {
 			if route.Comment != "" {
 				routeMap["comment"] = route.Comment
 			}
+			routeMap["cloud_advertise"] = route.Advertise
+			log.Println(fmt.Sprintf("[DEBUG] routeMap %s", routeMap))
 
 			routes = append(routes, routeMap)
 		}
 	}
 
 	return routes
+}
+
+func findVirtualNetworkRoutes(routes []pritunl.Route, networkCIDR string) []pritunl.Route {
+	result := make([]pritunl.Route, 1)
+
+	for _, route := range routes {
+		if route.Network == networkCIDR {
+			log.Println(fmt.Sprintf("[DEBUG] found vn %d", route.VirtualNetwork))
+			result[0] = route
+			break
+		}
+	}
+
+	return result
 }
 
 // This cannot currently be handled efficiently by a DiffSuppressFunc
