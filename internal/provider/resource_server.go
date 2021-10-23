@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"log"
 	"net"
 	"strings"
 )
@@ -592,10 +591,8 @@ func resourceReadServer(ctx context.Context, d *schema.ResourceData, meta interf
 		if !ok {
 			return diag.Errorf("failed to parse routes for the server: %s", server.Name)
 		}
-		log.Println(fmt.Sprintf("[DEBUG] here1"))
 
 		d.Set("route", flattenRoutesData(matchRoutesWithSchema(routes, declaredRoutes), true))
-		log.Println(fmt.Sprintf("[DEBUG] here2"))
 		d.Set("virtual_network_route", flattenRoutesData(findVirtualNetworkRoutes(routes, server.Network), false))
 	}
 
@@ -1069,7 +1066,6 @@ func flattenRoutesData(routesList []pritunl.Route, skipVirtualNetwork bool) []in
 	if routesList != nil {
 		for _, route := range routesList {
 			if route.VirtualNetwork && skipVirtualNetwork {
-				log.Println(fmt.Sprintf("[DEBUG] skip %d", skipVirtualNetwork))
 				// skip virtual network route
 				continue
 			}
@@ -1082,7 +1078,6 @@ func flattenRoutesData(routesList []pritunl.Route, skipVirtualNetwork bool) []in
 				routeMap["comment"] = route.Comment
 			}
 			routeMap["cloud_advertise"] = route.Advertise
-			log.Println(fmt.Sprintf("[DEBUG] routeMap %s", routeMap))
 
 			routes = append(routes, routeMap)
 		}
@@ -1096,7 +1091,6 @@ func findVirtualNetworkRoutes(routes []pritunl.Route, networkCIDR string) []prit
 
 	for _, route := range routes {
 		if route.Network == networkCIDR {
-			log.Println(fmt.Sprintf("[DEBUG] found vn %d", route.VirtualNetwork))
 			result[0] = route
 			break
 		}
