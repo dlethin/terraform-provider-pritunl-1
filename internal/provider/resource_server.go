@@ -477,7 +477,7 @@ func resourceServer() *schema.Resource {
 							Required:    false,
 							Optional: true,
 							Default: false,
-							Computed:    true,
+							// Computed:    true,
 						},
 					},
 				},
@@ -995,6 +995,23 @@ func resourceUpdateServer(ctx context.Context, d *schema.ResourceData, meta inte
 				if err != nil {
 					return diag.Errorf("Error on detaching route from the server: %s", err)
 				}
+			}
+		}
+	}
+
+	if d.HasChange("virtual_network_route") {
+		_, newRoutes := d.GetChange("virtual_network_route")
+
+		newRoutesMap := make(map[string]pritunl.Route, 0)
+		for _, v := range newRoutes.([]interface{}) {
+			route := pritunl.ConvertMapToRoute(v.(map[string]interface{}))
+			newRoutesMap[route.GetID()] = route
+		}
+
+		for _, route := range newRoutesMap {
+			err = apiClient.UpdateRouteOnServer(d.Id(), route)
+			if err != nil {
+				return diag.Errorf("Error on updating route on the server: %s", err)
 			}
 		}
 	}
