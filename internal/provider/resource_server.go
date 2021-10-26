@@ -1077,7 +1077,10 @@ func flattenRoutesData(routesList []pritunl.Route, skipVirtualNetwork bool) []in
 			if route.Comment != "" {
 				routeMap["comment"] = route.Comment
 			}
-			routeMap["cloud_advertise"] = route.Advertise
+
+			// older version of pritunl used vpc_id instead of advertise
+			// The route will be advertised when either vpc_id is set or advertise  is true
+			routeMap["cloud_advertise"] = route.Advertise || (route.VpcID != "")
 
 			routes = append(routes, routeMap)
 		}
