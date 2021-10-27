@@ -617,13 +617,6 @@ func (c client) AddRoutesToServer(serverId string, routes []Route) error {
 
 func (c client) UpdateRouteOnServer(serverId string, route Route) error {
 
-	// Account for legacy installations where pritunl was originally using vpc_id
-	// to indicate cloud_advertise.  In this case when we are setting Advertise,
-	// take the opportunity to zero out the configured vpc_id
-	if route.Advertise {
-		route.VpcID = ""
-	}
-
 	jsonData, err := json.Marshal(route)
 
 	url := fmt.Sprintf("/server/%s/route/%s", serverId, route.GetID())
